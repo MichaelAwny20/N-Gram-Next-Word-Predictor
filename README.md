@@ -2,6 +2,9 @@
 
 A modular N-Gram language model built as a Capstone project.
 
+## Requirements
+- `python version`: Python 3.10 or higher.
+
 ## Project Structure
 - `src/data_prep`: Text normalization and cleaning.
 - `src/model`: N-Gram frequency mapping and training.
