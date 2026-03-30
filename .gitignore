@@ -1,0 +1,21 @@
+# --- Environment & Config ---
+# Never share your local settings or paths
+.env
+config/.env
+
+# --- Data & Large Files ---
+# We keep the code, but not the heavy books or processed tokens
+data/raw/
+data/processed/
+data/model/
+
+# --- Python Artifacts ---
+# These are temporary files Python creates to run faster
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# --- Model Outputs ---
+# Don't commit the generated JSON models
+*.json

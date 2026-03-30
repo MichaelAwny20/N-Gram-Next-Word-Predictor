@@ -1,1 +1,19 @@
-python-dotenv
+# --- Core Project Requirements ---
+# For environment variable management
+python-dotenv==1.0.0
+
+# For advanced text processing (if needed)
+nltk==3.8.1
+
+# For downloading the Sherlock files programmatically
+requests==2.31.0
+
+# --- Extra Credit Requirements ---
+# For the Web UI
+streamlit==1.35.0
+
+# For data handling in the UI/Evaluator
+pandas==2.2.0
+
+# For automated testing
+pytest==8.2.0
