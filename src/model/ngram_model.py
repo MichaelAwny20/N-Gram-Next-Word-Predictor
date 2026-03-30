@@ -107,6 +107,20 @@ class NGramModel:
         return {}
 
     def save_model(self, model_path: str):
+        """Standardizes all keys to strings for JSON export."""
+        export_data = {}
+        for order in range(1, self.ngram_order + 1):
+            key_name = f"{order}gram"
+            if order == 1:
+                # Unigrams have an empty string key in JSON
+                export_data[key_name] = {"": self.probabilities[1][()]}
+            else:
+                export_data[key_name] = {
+                    " ".join(ctx) if isinstance(ctx, tuple) else ctx: targets 
+                    for ctx, targets in self.probabilities[order].items()
+                }
+        with open(model_path, 'w', encoding='utf-8') as f:
+            json.dump(export_data, f, indent=2)
         """
         Serializes the probability tables into a JSON file.
         Converts tuple keys to space-separated strings for JSON compatibility.
@@ -145,7 +159,58 @@ class NGramModel:
             print(f"Vocabulary saved successfully to {vocab_path}")
         except Exception as e:
             print(f"Error saving vocabulary: {e}")
-    def lookkup(self, context: tuple) -> dict:
+    def lookup(self, context: tuple) -> dict:
+        """
+        Performs a backoff lookup. It tries the longest possible context first.
+        If no matches are found, it 'backs off' by dropping the first word 
+        of the context and trying again, down to 1-grams.
+        
+        :param context: A tuple of words (the prefix).
+        :return: A dictionary of {next_word: probability} or an empty dict.
+        """
+        # We start looking at the highest possible order allowed by our model
+        # If the context is ("a", "b", "c") and NGRAM_ORDER is 4, we start at order 4.
+        current_order = min(len(context) + 1, self.ngram_order)
+        
+        while current_order >= 1:
+            # 1-grams have an empty tuple as context ()
+            search_context = context[-(current_order - 1):] if current_order > 1 else ()
+            
+            # Check if this context exists in our probability table
+            if search_context in self.probabilities[current_order]:
+                return self.probabilities[current_order][search_context]
+            
+            # Backoff: move to a smaller N-gram order
+            current_order -= 1
+
+        return {}
+        """
+        Unified lookup: Always converts context to string and 
+        uses 'Xgram' keys to match JSON structure.
+        """
+        current_order = min(len(context) + 1, self.ngram_order)
+        
+        while current_order >= 1:
+            # Match the JSON format: "4gram", "3gram", etc.
+            order_key = f"{current_order}gram"
+            
+            # Slice the tuple and join to string
+            sub_context = context[-(current_order - 1):] if current_order > 1 else ()
+            search_key = " ".join(sub_context)
+            
+            # Check the dictionary
+            # Note: We check str(order_key) for JSON and int order for live training
+            if order_key in self.probabilities:
+                if search_key in self.probabilities[order_key]:
+                    return self.probabilities[order_key][search_key]
+            
+            # Fallback for live training if keys are still integers
+            if current_order in self.probabilities:
+                if sub_context in self.probabilities[current_order]:
+                    return self.probabilities[current_order][sub_context]
+
+            current_order -= 1
+        return {}
         """
         Performs a backoff lookup compatible with JSON string keys.
         
@@ -206,7 +271,14 @@ class NGramModel:
             current_order -= 1
 
         return {}
-
+    def load_model(self, model_path: str, vocab_path: str):
+        """Loads the JSON files into the model instance."""
+        with open(model_path, 'r', encoding='utf-8') as f:
+            self.probabilities = json.load(f)
+        with open(vocab_path, 'r', encoding='utf-8') as f:
+            # We convert to a set for O(1) lookup speed
+            self.vocab = set(json.load(f))
+        print("Model and Vocab loaded successfully.")
 
 if __name__ == "__main__":
     # 1. Create a dummy token file for testing

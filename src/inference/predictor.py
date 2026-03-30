@@ -18,7 +18,7 @@ class Predictor:
         context_size = self.model.ngram_order - 1
         
         # Return as tuple to allow proper word-based slicing later
-        return tuple(tokens[-context_size:]) if tokens else ()
+        return tuple(tokens.split(" ")[-context_size:]) if tokens else ()
 
     def map_oov(self, context: tuple) -> tuple:
         """Replaces words not in the model's vocabulary list with <UNK>."""
@@ -35,6 +35,7 @@ class Predictor:
         
         # 3. Pass the TUPLE to the model's lookup
         predictions_dict = self.model.lookup(safe_context)
+        
         
         if not predictions_dict:
             return []

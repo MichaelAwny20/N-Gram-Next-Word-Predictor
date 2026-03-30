@@ -55,14 +55,20 @@ def main():
         model.save_model(model_path)
 
     # --- STEP: INFERENCE ---
-    if args.step == "inference" or args.step == "all":
-        print("\n--- Starting Inference Loop (Type 'quit' to exit) ---")
+    # --- STEP: INFERENCE ---
+    if args.step in ["inference", "all"]:
+        print("\n--- Starting Inference Loop ---")
         
-        # We must load the saved model data into our model instance first
-        # (You might need a model.load_model() method if you haven't written one!)
-        # For now, we assume build_counts_and_probabilities ran or data is in memory
+        # CRITICAL: If we are ONLY running inference, we MUST load the files
+        if args.step == "inference":
+            print(f"Loading model from {model_path}...")
+            with open(model_path, 'r', encoding='utf-8') as f:
+                model.probabilities = json.load(f)
+            with open(vocab_path, 'r', encoding='utf-8') as f:
+                model.vocab = set(json.load(f))
         
         predictor = Predictor(model, norm)
+        # ... rest of your loop
         
         try:
             while True:
@@ -74,7 +80,6 @@ def main():
                 
                 if not user_input:
                     continue
-                
                 predictions = predictor.predict_next(user_input, k=top_k)
                 print(f"Predictions: {predictions}")
                 
