@@ -3,7 +3,7 @@
 A modular N-Gram language model built as a Capstone project.
 
 ## Requirements
-- `python version`: Python 3.10 or higher version.
+- `python version`: Python 3.10 or higher version .
 
 ## Project Structure
 - `src/data_prep`: Text normalization and cleaning.
