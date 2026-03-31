@@ -2,6 +2,7 @@
 from collections import Counter, defaultdict
 import os
 import json
+from pathlib import Path
 from dotenv import load_dotenv
 class NGramModel:
     """
@@ -79,32 +80,6 @@ class NGramModel:
                         self.probabilities[order][context][target] = count / context_count
 
         print(f"Probabilities computed for all orders up to {self.ngram_order}.")
-    
-    def lookup(self, context: tuple) -> dict:
-        """
-        Performs a backoff lookup. It tries the longest possible context first.
-        If no matches are found, it 'backs off' by dropping the first word 
-        of the context and trying again, down to 1-grams.
-        
-        :param context: A tuple of words (the prefix).
-        :return: A dictionary of {next_word: probability} or an empty dict.
-        """
-        # We start looking at the highest possible order allowed by our model
-        # If the context is ("a", "b", "c") and NGRAM_ORDER is 4, we start at order 4.
-        current_order = min(len(context) + 1, self.ngram_order)
-        
-        while current_order >= 1:
-            # 1-grams have an empty tuple as context ()
-            search_context = context[-(current_order - 1):] if current_order > 1 else ()
-            
-            # Check if this context exists in our probability table
-            if search_context in self.probabilities[current_order]:
-                return self.probabilities[current_order][search_context]
-            
-            # Backoff: move to a smaller N-gram order
-            current_order -= 1
-
-        return {}
 
     def save_model(self, model_path: str):
         """Standardizes all keys to strings for JSON export."""
@@ -119,6 +94,7 @@ class NGramModel:
                     " ".join(ctx) if isinstance(ctx, tuple) else ctx: targets 
                     for ctx, targets in self.probabilities[order].items()
                 }
+        Path(model_path).parent.mkdir(parents=True, exist_ok=True)        
         with open(model_path, 'w', encoding='utf-8') as f:
             json.dump(export_data, f, indent=2)
         """
@@ -152,7 +128,7 @@ class NGramModel:
         """
         # Convert set to a sorted list for consistent file output
         vocab_list = sorted(list(self.vocab))
-        
+        Path(vocab_path).parent.mkdir(parents=True, exist_ok=True)   
         try:
             with open(vocab_path, 'w', encoding='utf-8') as f:
                 json.dump(vocab_list, f, indent=2)
@@ -184,93 +160,7 @@ class NGramModel:
             current_order -= 1
 
         return {}
-        """
-        Unified lookup: Always converts context to string and 
-        uses 'Xgram' keys to match JSON structure.
-        """
-        current_order = min(len(context) + 1, self.ngram_order)
-        
-        while current_order >= 1:
-            # Match the JSON format: "4gram", "3gram", etc.
-            order_key = f"{current_order}gram"
-            
-            # Slice the tuple and join to string
-            sub_context = context[-(current_order - 1):] if current_order > 1 else ()
-            search_key = " ".join(sub_context)
-            
-            # Check the dictionary
-            # Note: We check str(order_key) for JSON and int order for live training
-            if order_key in self.probabilities:
-                if search_key in self.probabilities[order_key]:
-                    return self.probabilities[order_key][search_key]
-            
-            # Fallback for live training if keys are still integers
-            if current_order in self.probabilities:
-                if sub_context in self.probabilities[current_order]:
-                    return self.probabilities[current_order][sub_context]
 
-            current_order -= 1
-        return {}
-        """
-        Performs a backoff lookup compatible with JSON string keys.
-        
-        :param context: A tuple of words (the prefix).
-        :return: A dictionary of {next_word: probability} or an empty dict.
-        """
-        # Start at the highest possible order (N)
-        current_order = min(len(context) + 1, self.ngram_order)
-        
-        while current_order >= 1:
-            # 1. Create the key name that matches model.json (e.g., "4gram")
-            order_key = f"{current_order}gram"
-            
-            # 2. Get the specific number of words needed for this order
-            # For order 4, we need 3 words of context
-            sub_context_tuple = context[-(current_order - 1):] if current_order > 1 else ()
-            
-            # 3. Convert the tuple to a space-separated string to match JSON keys
-            search_context_str = " ".join(sub_context_tuple)
-            
-            # 4. Check if the order and the context exist in our probabilities
-            if order_key in self.probabilities:
-                if search_context_str in self.probabilities[order_key]:
-                    return self.probabilities[order_key][search_context_str]
-            
-            # Backoff: move to a smaller N-gram order (e.g., 4gram -> 3gram)
-            current_order -= 1
-
-        return {}
-        """
-        Modified lookup to handle both training (tuples) and 
-        loaded JSON models (strings).
-        """
-        # Ensure context is a list of words to work with
-        if isinstance(context, str):
-            context_words = context.split()
-        else:
-            context_words = list(context)
-
-        current_order = min(len(context_words) + 1, self.ngram_order)
-
-        while current_order >= 1:
-            # 1. Get the slice of words for this order
-            slice_of_words = context_words[-(current_order - 1):] if current_order > 1 else []
-            
-            # 2. Create the string key "word1 word2"
-            search_context = " ".join(slice_of_words)
-            
-            # 3. Check both int and str keys (JSON loads keys as strings like "4")
-            order_key = current_order
-            str_order_key = f"{order_key}gram" # Matches your save_model "4gram" format
-            
-            # Look in the loaded probabilities
-            if str_order_key in self.probabilities:
-                if search_context in self.probabilities[str_order_key]:
-                    return self.probabilities[str_order_key][search_context]
-            
-            current_order -= 1
-
-        return {}
     def load_model(self, model_path: str, vocab_path: str):
         """Loads the JSON files into the model instance."""
         with open(model_path, 'r', encoding='utf-8') as f:
